@@ -13,7 +13,7 @@ var API = (function ($) {
     }
 
     $(function() {
-        var script, features, m;
+        var script, features = {}, m;
         
         // Build script element "by hand" to bypass jquery preprocessing
         script = document.createElement('script');
@@ -21,10 +21,12 @@ var API = (function ($) {
         script.src = "code.js";
         
         // Get and features
-        features = $("html").data("features").split(/\s+/);
+        $("html").data("features").split(/\s+/).forEach(function(f) {
+           features[f] = true; 
+        });
         
         // Canvas
-        if (features.indexOf("canvas")>-1) {
+        if (features.canvas) {
             context = $("#graphics")[0].getContext("2d");
             
             // Set up canvas api
@@ -78,7 +80,7 @@ var API = (function ($) {
             $("div.canvas").hide();
             
         // Console
-        if (features.indexOf("console")>-1) {
+        if (features.console) {
             $text = $("#text");
             api.print = function(s) {
                 $text.val($text.val() + s + "\n");
@@ -87,7 +89,7 @@ var API = (function ($) {
             $("div.console").hide();
             
         // Make api global    
-        if (features.indexOf("global")>-1)
+        if (features.globals)
             for (m in api)
                 window[m] = api[m];
     
