@@ -7,13 +7,22 @@
     </head>
     <body>
         <div class="header">
-            <div class="logo">BMSCS</div>
+            <div id="logo">BMSCS</div>
+            <div id="message"></div>
+            <div id="buttons">
+            <button class="bmscs-btn btn-grn" id="showcode">Show Code</button>
+            <button class="bmscs-btn btn-red" id="reloadcode">Reload Code</button>
+            </div>
         </div>
         
-        <div class="container">
+        <div id="shade"></div>
+        <div id="source">
+            <textarea readonly rows="38" cols="80"></textarea>
+        </div>
+        <div id="container">
         <div class="component console">
             <h1>Console</h1>
-            <textarea id="text" rows="25" cols="50"></textarea>
+            <textarea id="text" rows="29" cols="58" readonly></textarea>
         </div>
         <div class="component canvas">
             <h1>Canvas</h1>
