@@ -1,3 +1,7 @@
+select:focus, button:focus {
+    outline: 0;
+}
+
 .header {
     position: absolute;
     left: 0;
@@ -23,18 +27,48 @@
     left: 2%;
 }
 
-#message {
-    right: 30%;
+#menu {
+    left: 20%;
     top: 25%;
-    width: 40%;
+}
+
+#menu select {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 22px;
+    padding-left: .5em;
+    padding-right: .5em;
+    border-radius: 8px;
+    background-image: -webkit-linear-gradient(top, gray 0%, silver 100%);;
+    -moz-box-shadow:inset 0 1px 0 0 #cccccc;
+	-webkit-box-shadow:inset 0 1px 0 0 #cccccc;
+	box-shadow:inset 0 1px 0 0 #cccccc;
+	text-shadow:1px 1px 0px #999999;
+}
+
+#message {
+    left: 40%;
+    top: 25%;
+    width: 30%;
     text-align: center;
     font-family: Arial, Helvetica, sans-serif;
     font-size: 24px;
 }
 
 #buttons {
-    right: 5%;
+    right: 2%;
     top: 25%;
+}
+
+#stacktrace {
+    position: absolute;
+    left: 40%;
+    top: 60px;
+    background-color: #eeeeee;
+    border: 1px inset black;
+    padding: .5em;
+    white-space: pre;
+    z-index: 300;
+    display: none;
 }
 
 #container {

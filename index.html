@@ -1,4 +1,4 @@
-<html data-features="console globals">
+<html>
     <head>
         <title>BMSCS Platform</title>
         <link rel="stylesheet" type="text/css" href="css/site.css">
@@ -8,6 +8,9 @@
     <body>
         <div class="header">
             <div id="logo">BMSCS</div>
+            <div id="menu">
+                <select id="codeselect"></select>
+            </div>
             <div id="message"></div>
             <div id="buttons">
             <button class="bmscs-btn btn-grn" id="showcode">Show Code</button>
@@ -15,6 +18,7 @@
             </div>
         </div>
         
+        <div id="stacktrace"></div>
         <div id="shade"></div>
         <div id="source">
             <textarea readonly rows="38" cols="80"></textarea>
