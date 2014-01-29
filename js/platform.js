@@ -119,39 +119,39 @@ var BMS = (function ($) {
         // Console
         
         // print to console
-        print: function(s) {
+        print: function (s) {
             $text.val($text.val() + s + "\n");
         },
         
         // Canvas
 
-        fillMode: function(mode) {
+        fillMode: function (mode) {
             fillMode = mode;
         },
         
-        strokeMode: function(mode) {
+        strokeMode: function (mode) {
             strokeMode = mode;
         },
         
-        fillColor: function(color) {
+        fillColor: function (color) {
             if (arguments.length==3) {
                 color = rgbToHex(arguments[0], arguments[1], arguments[2]);
             }
             context.fillStyle  = color;
         },
         
-        strokeColor: function(color) {
+        strokeColor: function (color) {
             if (arguments.length==3) {
                 color = rgbToHex(arguments[0], arguments[1], arguments[2]);
             }
             context.strokeStyle = color;
         },
         
-        lineWidth: function(w) {
+        lineWidth: function (w) {
             context.lineWidth = w;
         },
         
-        background: function(color) {
+        background: function (color) {
             var oldFillStyle = context.fillStyle;
             if (arguments.length==3) {
                 color = rgbToHex(arguments[0], arguments[1], arguments[2]);
@@ -161,31 +161,49 @@ var BMS = (function ($) {
             context.fillStyle = oldFillStyle;
         },
         
-        rectangle: function(x, y, w, h) {
-            if (fillMode)
+        rectangle: function (x, y, w, h) {
+            if (fillMode) {
                 context.fillRect(x, y, w, h);
-            if (strokeMode)
+            }
+            if (strokeMode) {
                 context.strokeRect(x, y, w, h);
+            }
         },
         
-        ellipse: function(x, y, hr, vr) {
+        triangle: function (x1, y1, x2, y2, x3, y3) {
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            context.lineTo(x3, y3);
+            context.closePath();
+            if (fillMode) {
+                context.fill();
+            }
+            if (strokeMode) {
+                context.stroke();
+            }
+         },
+        
+        ellipse: function (x, y, hr, vr) {
             context.save();
             context.translate(x, y);
             context.scale(1, vr / hr);
             context.beginPath();
             context.arc(0, 0, hr, 0, 2*Math.PI, false);
             context.restore();
-            if (fillMode)
+            if (fillMode) {
                 context.fill();
-            if (strokeMode)
+            }
+            if (strokeMode) {
                 context.stroke();
+            }
         },
         
-        circle: function(x, y, r) {
+        circle: function (x, y, r) {
             api.ellipse(x, y, r, r);
         },
         
-        line: function(x1, y1, x2, y2) {
+        line: function (x1, y1, x2, y2) {
             context.beginPath();
             context.moveTo(x1, y1);
             context.lineTo(x2, y2);

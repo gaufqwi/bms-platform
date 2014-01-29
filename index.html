@@ -9,12 +9,12 @@
         <div class="header">
             <div id="logo">BMSCS</div>
             <div id="menu">
-                <select id="codeselect"></select>
+                <select id="codeselect" class="bmscs-sys-select"></select>
             </div>
             <div id="message"></div>
             <div id="buttons">
-            <button class="bmscs-btn btn-grn" id="showcode">Show Code</button>
-            <button class="bmscs-btn btn-red" id="reloadcode">Reload Code</button>
+            <button class="bmscs-sys-btn" id="showcode">Show Code</button>
+            <button class="bmscs-sys-btn" id="reloadcode">Reload Code</button>
             </div>
         </div>
         
@@ -24,13 +24,38 @@
             <textarea readonly rows="38" cols="80"></textarea>
         </div>
         <div id="container">
-        <div class="component console">
+        <div class="screen" id="console">
             <h1>Console</h1>
             <textarea id="text" rows="29" cols="58" readonly></textarea>
         </div>
-        <div class="component canvas">
+        <div class="screen" id="canvas">
             <h1>Canvas</h1>
             <canvas id="graphics" width="400" height="400"></canvas>
+        </div>
+        <div id="input">
+            <div class="panel" id="uiinput">
+            <input id="input" class="bmscs-ui-input"/>
+            <button id="submit" class="bmscs-ui-btn gray">Submit</button>
+            </div>
+            <div class="panel" id="uibuttons">
+                <table>
+                    <tr>
+                    <td><button class="bmscs-ui-btn red">Button 1</button></td>
+                    <td><button class="bmscs-ui-btn green">Button 2</button></td>
+                    </tr>
+                    <tr>
+                    <td><button class="bmscs-ui-btn yellow">Button 3</button></td>
+                    <td><button class="bmscs-ui-btn blue">Button 4</button></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="panel" id="uiselect">
+                <select id="choice" class="bmscs-ui-select">
+                    <option>Choice 1</option>
+                    <option>Choice 2</option>
+                    <option>Choice 3</option>
+                </select>
+            </div>
         </div>
         </div>
     </body>
