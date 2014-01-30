@@ -100,13 +100,20 @@ select:focus, button:focus {
 
 #source {
     position: absolute;
-    left: 0;
+    left: 25%;
     top: 72px;
-    width: 100%;
+    width: 50%;
     height: 600px;
-    text-align: center;
+    /*text-align: center;*/
     display: none;
     z-index: 200;
+    background-color: black;
+    color: white;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 12px;
+    overflow: auto;
+    white-space: pre;
+    padding: 2px;
 }
 
 .screen {
@@ -141,9 +148,15 @@ select:focus, button:focus {
     background-color: black;
     color: white;
     font-family: "Courier New", Courier, monospace;
-    font-size: 12px;
-    margin: 2px;
+    font-size: 14px;
+    border: 1px solid black;
     padding: 2px;
+    margin: 2px;
+    width: 400px;
+    height: 400px;
+    white-space: pre;
+    overflow: auto;
+    text-align: left;
 }
 
 .bmscs-sys-btn {
@@ -189,7 +202,6 @@ button:active {
     margin-left: auto;
     margin-right: auto;
     margin-top: 12px;
-    text-align: center;
     border: 1px outset black;
     border-radius: 3px;
 }

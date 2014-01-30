@@ -7,6 +7,7 @@ for (var i=1; i<=20; i++) {
     total += i;     // Add the current number to the total
 }
 
+BMS.consoleColor("yellow");
 BMS.print("The sum of the first 20 natural numbers is " + total);
 
 // Find the sum of the first 20 perfect squares
@@ -19,4 +20,5 @@ for (var i=1; i<=20; i++) {
     sqtotal += i*i;     // i*i is the square of i
 }
 
+BMS.consoleColor("red");
 BMS.print("The sum of the first 20 perfect squares is " + sqtotal);
