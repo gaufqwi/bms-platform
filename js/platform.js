@@ -162,196 +162,228 @@
         var BMS = terp.createObject(null);
         terp.setProperty(scope, 'BMS', BMS, true);
 
-        var wrapper = function () {
-            var slist = [];
-            for (var i = 0, l = arguments.length; i<l; i++) {
-                slist.push(arguments[i].toString());
-            }
-            $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
-            $text.append('\n');
+        for (var name in getApi(terp)) {
+            terp.setProperty(BMS, name, terp.createNativeFunction(api[name]), true);
         }
-        terp.setProperty(BMS, 'print', terp.createNativeFunction(wrapper), true);
     }
 
-    // External API for console/canvas/input panel
-    api = {
-        
-        //  General
-        
-        // Show/hide UI elements
-        toggleFeatures: function (features, state) {
-            features.forEach(function (f) {
-                switch (f) {
-                    case "console":
-                        $("#console").toggle(state);
-                        break;
-                    case "canvas":
-                        $("#canvas").toggle(state);
-                        break;
-                    case "input":
-                        $("#input").toggle(state);
-                        break;
-                }
-            });
-        },
-        
-        // Input
-        
-        // Change button labels
-        setButtonLabel: function (but, label) {
-            if (but===0) {      // 0 is the submit button
-                $submit.html(label);
-            } else {
-                $buttons.eq(but-1).html(label);
-            }
-        },
-        
-        // Change options for select menu
-        setChoices: function (choices) {
-            $choice.empty();
-            choices.forEach(function (c) {
-                $choice.append("<option>" + c + "</option>");
-            });
-        },
-        
-        // Get current choice
-        getChoice: function () {
-            return $choice.find(":selected").text();
-        },
-        
-        // Set callbacks
-        setFieldCallback: function (f) {
-            callbacks.field = f;
-        },
-        
-        setChoiceCallback: function (f) {
-            callbacks.choice = f;
-        },
-        
-        setButtonCallback: function (but, f) {
-            callbacks.buttons[but-1] = f;  
-        },
-        
-        // Console
-        
-        // print to console
-        print: function (s) {
-            //$text.val($text.val() + s + "\n");
-            $text.append($("<span>" + s + "</span>").css("color", consoleColor));
-            $text.append("\n");
-        },
-        
-        // clear text from console
-        clearConsole: function () {
-            $text.empty()
-        },
-        
-        // reset console completely, including colors
-        resetConsole: function () {
-            resetConsole();
-        },
-        
-        consoleColor: function (color) {
-            if (arguments.length==3) {
-                color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-            }
-            consoleColor = color;
-        },
-        
-        consoleBackground: function (color) {
-            if (arguments.length==3) {
-                color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-            }
-            $text.css("background-color", color);
-        },
-        
-        // Canvas
+    // External API for console/canvas/input panel. Wrapped to close interpreter reference
+    function getApi(terp) {
+        api = {
 
-        fillMode: function (mode) {
-            fillMode = mode;
-        },
-        
-        strokeMode: function (mode) {
-            strokeMode = mode;
-        },
-        
-        fillColor: function (color) {
-            if (arguments.length==3) {
-                color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-            }
-            context.fillStyle  = color;
-        },
-        
-        strokeColor: function (color) {
-            if (arguments.length==3) {
-                color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-            }
-            context.strokeStyle = color;
-        },
-        
-        lineWidth: function (w) {
-            context.lineWidth = w;
-        },
-        
-        background: function (color) {
-            var oldFillStyle = context.fillStyle;
-            if (arguments.length==3) {
-                color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-            }
-            context.fillStyle  = color;
-            context.fillRect(0, 0, canvasW, canvasH);
-            context.fillStyle = oldFillStyle;
-        },
-        
-        rectangle: function (x, y, w, h) {
-            if (fillMode) {
-                context.fillRect(x, y, w, h);
-            }
-            if (strokeMode) {
-                context.strokeRect(x, y, w, h);
-            }
-        },
-        
-        triangle: function (x1, y1, x2, y2, x3, y3) {
-            context.beginPath();
-            context.moveTo(x1, y1);
-            context.lineTo(x2, y2);
-            context.lineTo(x3, y3);
-            context.closePath();
-            if (fillMode) {
-                context.fill();
-            }
-            if (strokeMode) {
+            //  General
+
+            // Show/hide UI elements
+            toggleFeatures: function (features, state) {
+                state = state.toBoolean();
+                for (var i = 0, l = features.length.toNumber(); i < l; i++) {
+                    var f = terp.getProperty(features, terp.createPrimitive(i)).toString();
+                    switch (f) {
+                        case 'console':
+                            $('#console').toggle(state);
+                            break;
+                        case 'canvas':
+                            $('#canvas').toggle(state);
+                            break;
+                        case 'input':
+                            $('#input').toggle(state);
+                            break;
+                    }
+                }
+            },
+
+            // Input
+
+            // Change button labels
+            setButtonLabel: function (but, label) {
+                but = but.toNumber();
+                label = label.toString();
+                if (but === 0) {      // 0 is the submit button
+                    $submit.html(label);
+                } else {
+                    $buttons.eq(but - 1).html(label);
+                }
+            },
+
+            // Change options for select menu
+            setChoices: function (choices) {
+                $choice.empty();
+                for (var i = 0, l = choices.length.toNumber(); i < l; i++) {
+                    var c = terp.getProperty(choices, terp.createPrimitive(i)).toString();
+                    $choice.append("<option>" + c + "</option>");
+                }
+            },
+
+            // Get current choice
+            getChoice: function () {
+                return terp.createPrimitive($choice.find(":selected").text());
+            },
+
+            // Set callbacks << FIXME
+            setFieldCallback: function (f) {
+                callbacks.field = f;
+            },
+
+            setChoiceCallback: function (f) {
+                callbacks.choice = f;
+            },
+
+            setButtonCallback: function (but, f) {
+                callbacks.buttons[but - 1] = f;
+            },
+
+            // Console
+
+            // print to console
+            print: function () {
+                var slist = [];
+                for (var i = 0, l = arguments.length; i < l; i++) {
+                    slist.push(arguments[i].toString());
+                }
+                $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
+                $text.append('\n');
+            },
+
+            // clear text from console
+            clearConsole: function () {
+                $text.empty()
+            },
+
+            // reset console completely, including colors
+            resetConsole: function () {
+                resetConsole();
+            },
+
+            consoleColor: function (color) {
+                if (arguments.length == 3) {
+                    consoleColor = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    consoleColor = color.toString();
+                }
+            },
+
+            consoleBackground: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                $text.css("background-color", color);
+            },
+
+            // Canvas
+
+            fillMode: function (mode) {
+                fillMode = mode.toBoolean();
+            },
+
+            strokeMode: function (mode) {
+                strokeMode = mode.toBoolean();
+            },
+
+            fillColor: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.fillStyle = color;
+            },
+
+            strokeColor: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.strokeStyle = color;
+            },
+
+            lineWidth: function (w) {
+                context.lineWidth = w.toNumber();
+            },
+
+            background: function (color) {
+                var oldFillStyle = context.fillStyle;
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.fillStyle = color;
+                context.fillRect(0, 0, canvasW, canvasH);
+                context.fillStyle = oldFillStyle;
+            },
+
+            rectangle: function (x, y, w, h) {
+                x = x.toNumber();
+                y = y.toNumber();
+                w = w.toNumber();
+                h = h.toNumber();
+                if (fillMode) {
+                    context.fillRect(x, y, w, h);
+                }
+                if (strokeMode) {
+                    context.strokeRect(x, y, w, h);
+                }
+            },
+
+            triangle: function (x1, y1, x2, y2, x3, y3) {
+                x1 = x1.toNumber();
+                y1 = y1.toNumber();
+                x2 = x2.toNumber();
+                y2 = y2.toNumber();
+                x3 = x3.toNumber();
+                y3 = y3.toNumber();
+                context.beginPath();
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
+                context.lineTo(x3, y3);
+                context.closePath();
+                if (fillMode) {
+                    context.fill();
+                }
+                if (strokeMode) {
+                    context.stroke();
+                }
+            },
+
+            ellipse: function (x, y, hr, vr) {
+                x = x.toNumber();
+                y = y.toNumber();
+                hr = hr.toNumber();
+                vr = vr.toNumber();
+                context.save();
+                context.translate(x, y);
+                context.scale(1, vr / hr);
+                context.beginPath();
+                context.arc(0, 0, hr, 0, 2 * Math.PI, false);
+                context.restore();
+                if (fillMode) {
+                    context.fill();
+                }
+                if (strokeMode) {
+                    context.stroke();
+                }
+            },
+
+            circle: function (x, y, r) {
+                api.ellipse(x, y, r, r);
+            },
+
+            line: function (x1, y1, x2, y2) {
+                x1 = x1.toNumber();
+                y1 = y1.toNumber();
+                x2 = x2.toNumber();
+                y2 = y2.toNumber();
+                context.beginPath();
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
                 context.stroke();
             }
-         },
-        
-        ellipse: function (x, y, hr, vr) {
-            context.save();
-            context.translate(x, y);
-            context.scale(1, vr / hr);
-            context.beginPath();
-            context.arc(0, 0, hr, 0, 2*Math.PI, false);
-            context.restore();
-            if (fillMode) {
-                context.fill();
-            }
-            if (strokeMode) {
-                context.stroke();
-            }
-        },
-        
-        circle: function (x, y, r) {
-            api.ellipse(x, y, r, r);
-        },
-        
-        line: function (x1, y1, x2, y2) {
-            context.beginPath();
-            context.moveTo(x1, y1);
-            context.lineTo(x2, y2);
-            context.stroke();
         }
-        
+
+        return api;
     }
 
     // On document ready
