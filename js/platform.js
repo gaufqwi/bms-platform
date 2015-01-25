@@ -133,9 +133,10 @@ var BMS = (function ($) {
     // In the absence of a json API, screen scrape
     function parseCodeDir (data) {
         var files = [], $dom = $(data);
-        $dom.find("tr").each(function () {
+        $dom.find("a").each(function () {
             var url, name, timestamp, $a;
-            $a = $(this).find("a");
+            //$a = $(this).find("a");
+            $a = $(this);
             url = $a.attr("href");
             name = $a.html();
             timestamp = new Date($(this).find("td:nth-child(4)").html());
@@ -402,13 +403,13 @@ var BMS = (function ($) {
         });
         
         // Read code dir and set up drop down
-        $.ajax({url: "code/", dataType: "text", success: function (data) {
-            codeList = parseCodeDir(data);
+        $.ajax({url: "code/index.php", dataType: "json", success: function (data) {
+            codeList = data;
             codeList.forEach(function (spec) {
-                $select.append($("<option>").html(spec.name).val(spec.url));
+                $select.append($("<option>").html(spec).val('code/' + spec));
             });
             //codeUrl = "code.js";
-            codeUrl = codeList[0].url;
+            codeUrl = 'code/' + codeList[0];
             loadCode();
         }});
         $select.change(function () {
