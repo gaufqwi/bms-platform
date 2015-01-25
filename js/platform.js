@@ -1,6 +1,6 @@
 "use strict";
 
-var BMS = (function ($) {
+(function ($) {
     var context, codeUrl, codeList, callbacks;
     var  $text, api, $message, $st, $source, $field, $buttons, $choice, $submit;
     var fillMode = true, strokeMode = true, consoleColor;
@@ -118,15 +118,22 @@ var BMS = (function ($) {
         resetInput();
         
         try {
-            // Wrap code in function to create private namespace
-            codeFunc = new Function("window", code + "\n\n//@ sourceURL=" + codeUrl);
-            //$("#source textarea").val(code);
-            $source.html(code);
-            codeFunc();
-            setError("info", "Done");
+            var interpreter = new Interpreter(code, interpreterInit);
+            interpreter.run();      // FIXME
+            setError("info", "Running");
         } catch (e) {
             setError("error", e);
         }
+        //try {
+        //    // Wrap code in function to create private namespace
+        //    codeFunc = new Function("window", code + "\n\n//@ sourceURL=" + codeUrl);
+        //    //$("#source textarea").val(code);
+        //    $source.html(code);
+        //    codeFunc();
+        //    setError("info", "Done");
+        //} catch (e) {
+        //    setError("error", e);
+        //}
     }
     
     // Parse/filter code directory contents.
@@ -149,7 +156,23 @@ var BMS = (function ($) {
         });
         return files;
     }
-    
+
+    // Initialize JS Interpreter + create API
+    function interpreterInit (terp, scope) {
+        var BMS = terp.createObject(null);
+        terp.setProperty(scope, 'BMS', BMS, true);
+
+        var wrapper = function () {
+            var slist = [];
+            for (var i = 0, l = arguments.length; i<l; i++) {
+                slist.push(arguments[i].toString());
+            }
+            $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
+            $text.append('\n');
+        }
+        terp.setProperty(BMS, 'print', terp.createNativeFunction(wrapper), true);
+    }
+
     // External API for console/canvas/input panel
     api = {
         
@@ -218,7 +241,7 @@ var BMS = (function ($) {
             $text.append("\n");
         },
         
-        // clear text from consol
+        // clear text from console
         clearConsole: function () {
             $text.empty()
         },
@@ -416,91 +439,6 @@ var BMS = (function ($) {
             codeUrl = $select.val();
             loadCode();
         });
-
-        // Canvas
-        
-        // Set up canvas api
-        // api.fillMode = function(mode) {
-        //     fillMode = mode;
-        // };
-        // api.strokeMode = function(mode) {
-        //     strokeMode = mode;
-        // };
-        // api.fillColor = function(color) {
-        //     if (arguments.length==3)
-        //         color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-        //         context.fillStyle  = color;
-        // };
-        // api.strokeColor = function(color) {
-        //     if (arguments.length==3)
-        //         color = rgbToHex(arguments[0], arguments[1], arguments[2]);
-        //         context.strokeStyle = color;
-        // };
-        // api.lineWidth = function(w) {
-        //     context.lineWidth = w;
-        // };
-        // api.rectangle = function(x, y, w, h) {
-        //     if (fillMode)
-        //         context.fillRect(x, y, w, h);
-        //     if (strokeMode)
-        //         context.strokeRect(x, y, w, h);
-        // };
-        // api.ellipse = function(x, y, hr, vr) {
-        //     context.save();
-        //     context.translate(x, y);
-        //     context.scale(1, vr / hr);
-        //     context.beginPath();
-        //     context.arc(0, 0, hr, 0, 2*Math.PI, false);
-        //     context.restore();
-        //     if (fillMode)
-        //         context.fill();
-        //     if (strokeMode)
-        //         context.stroke();
-        // };
-        // api.circle = function(x, y, r) {
-        //     api.ellipse(x, y, r, r);
-        // };
-        // api.line = function(x1, y1, x2, y2) {
-        //     context.beginPath();
-        //     context.moveTo(x1, y1);
-        //     context.lineTo(x2, y2);
-        //     context.stroke();
-        // }
-        
-        // Set up web worker
-        /*$.ajax({url: "code.js", dataType: "text", success: function(script) {
-            var worker = new Worker("js/worker.js");
-            
-            // proxy message to API object
-            worker.onmessage = function(msg) {
-                api[msg.data.func].apply(null, msg.data.args);
-            };
-            
-            // pass script to worker
-            worker.postMessage(script);
-        }});*/
-            
-        // Console
-        // api.print = function(s) {
-        //     $text.val($text.val() + s + "\n");
-        // }
-
-        // Make api global    
-        // if (features.globals)
-        //     for (m in api)
-        //         window[m] = api[m];
-    
-        //console.log(codeUrl);
-        //loadCode();
-        // Append script element to get and run code
-        //$.getScript("code.js", function (code) {
-        //    $("#source textarea").val(code);
-        //});
-        //$.ajax({url: "code.js", dataType: "text", success: resetPlatform, 
-        //    error: function () {setError("network", "Could not load code.js");}});
-        //$("body").append(script);
-        //$("body").append($('<iframe class="hidden" src="iframe.html"></iframe>'));
     });
-    
-    return api;
+
 })(jQuery);

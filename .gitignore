@@ -47,4 +47,6 @@ com_crashlytics_export_strings.xml
 crashlytics.properties
 crashlytics-build.properties
 
-
+# Exclude student code, but not the sample files
+code/*.js
+!/code/ex-*.js
