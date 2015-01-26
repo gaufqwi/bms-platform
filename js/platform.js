@@ -129,7 +129,7 @@
             interpreter = new Interpreter(code, interpreterInit);
             interpreterRunning = true;
             setError("info", "Running");
-            setTimeout(doStep, 0);
+            setImmediate(doStep);
         } catch (e) {
             setError("error", e);
         }
@@ -169,7 +169,7 @@
         // TODO: Runaway loop detection
         if (interpreterRunning) {
             if (interpreter.step()) {
-                setTimeout(doStep, 0);
+                setImmediate(doStep);
             } else {
                 setError('info', 'Done');
             }
