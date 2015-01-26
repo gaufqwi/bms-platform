@@ -1,6 +1,0 @@
-[submodule "lib/JS-Interpreter"]
-	path = lib/JS-Interpreter
-	url = https://github.com/NeilFraser/JS-Interpreter.git
-[submodule "lib/setImmediate"]
-	path = lib/setImmediate
-	url = https://github.com/YuzuJS/setImmediate.git
