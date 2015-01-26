@@ -5,6 +5,8 @@
     var  $text, api, $message, $st, $source, $field, $buttons, $choice, $submit;
     var fillMode = true, strokeMode = true, consoleColor;
     var canvasW = 400, canvasH = 400;
+    var interpreter;
+    var interpreterRunning = false;
     
     // Utility functions
     function componentToHex(c) {
@@ -76,9 +78,12 @@
         } else {
             switch (severity) {
                 case "info":
-                    $message.css("color", "blue");
+                    $message.css("color", "green");
                     break;
                 case "network":
+                    $message.css("color", "blue");
+                    break;
+                case "warning":
                     $message.css("color", "yellow");
                     break;
                 case "error":
@@ -111,29 +116,23 @@
         $("#console").show();
         $("#canvas").show();
         $("#input").show();
-        
+
+        // Load code in hidden div
+        $source.html(code);
+
         // Reset UI
         resetConsole();
         resetCanvas();
         resetInput();
         
         try {
-            var interpreter = new Interpreter(code, interpreterInit);
-            interpreter.run();      // FIXME
+            interpreter = new Interpreter(code, interpreterInit);
+            interpreterRunning = true;
             setError("info", "Running");
+            setTimeout(doStep, 0);
         } catch (e) {
             setError("error", e);
         }
-        //try {
-        //    // Wrap code in function to create private namespace
-        //    codeFunc = new Function("window", code + "\n\n//@ sourceURL=" + codeUrl);
-        //    //$("#source textarea").val(code);
-        //    $source.html(code);
-        //    codeFunc();
-        //    setError("info", "Done");
-        //} catch (e) {
-        //    setError("error", e);
-        //}
     }
     
     // Parse/filter code directory contents.
@@ -162,229 +161,237 @@
         var BMS = terp.createObject(null);
         terp.setProperty(scope, 'BMS', BMS, true);
 
-        for (var name in getApi(terp)) {
+        for (var name in api) {
             terp.setProperty(BMS, name, terp.createNativeFunction(api[name]), true);
+        }
+    }
+    function doStep () {
+        // TODO: Runaway loop detection
+        if (interpreterRunning) {
+            if (interpreter.step()) {
+                setTimeout(doStep, 0);
+            } else {
+                setError('info', 'Done');
+            }
+        } else {
+            setError('error', 'Stopped');
         }
     }
 
     // External API for console/canvas/input panel. Wrapped to close interpreter reference
-    function getApi(terp) {
         api = {
 
-            //  General
+        //  General
 
-            // Show/hide UI elements
-            toggleFeatures: function (features, state) {
-                state = state.toBoolean();
-                for (var i = 0, l = features.length.toNumber(); i < l; i++) {
-                    var f = terp.getProperty(features, terp.createPrimitive(i)).toString();
-                    switch (f) {
-                        case 'console':
-                            $('#console').toggle(state);
-                            break;
-                        case 'canvas':
-                            $('#canvas').toggle(state);
-                            break;
-                        case 'input':
-                            $('#input').toggle(state);
-                            break;
-                    }
+        // Show/hide UI elements
+        toggleFeatures: function (features, state) {
+            state = state.toBoolean();
+            for (var i = 0, l = features.length.toNumber(); i < l; i++) {
+                var f = interpreter.getProperty(features, terp.createPrimitive(i)).toString();
+                switch (f) {
+                    case 'console':
+                        $('#console').toggle(state);
+                        break;
+                    case 'canvas':
+                        $('#canvas').toggle(state);
+                        break;
+                    case 'input':
+                        $('#input').toggle(state);
+                        break;
                 }
-            },
+            }
+        },
 
-            // Input
+        // Input
 
-            // Change button labels
-            setButtonLabel: function (but, label) {
-                but = but.toNumber();
-                label = label.toString();
-                if (but === 0) {      // 0 is the submit button
-                    $submit.html(label);
-                } else {
-                    $buttons.eq(but - 1).html(label);
-                }
-            },
+        // Change button labels
+        setButtonLabel: function (but, label) {
+            but = but.toNumber();
+            label = label.toString();
+            if (but === 0) {      // 0 is the submit button
+                $submit.html(label);
+            } else {
+                $buttons.eq(but - 1).html(label);
+            }
+        },
 
-            // Change options for select menu
-            setChoices: function (choices) {
-                $choice.empty();
-                for (var i = 0, l = choices.length.toNumber(); i < l; i++) {
-                    var c = terp.getProperty(choices, terp.createPrimitive(i)).toString();
-                    $choice.append("<option>" + c + "</option>");
-                }
-            },
+        // Change options for select menu
+        setChoices: function (choices) {
+            $choice.empty();
+            for (var i = 0, l = choices.length.toNumber(); i < l; i++) {
+                var c = interpreter.getProperty(choices, interpreter.createPrimitive(i)).toString();
+                $choice.append("<option>" + c + "</option>");
+            }
+        },
 
-            // Get current choice
-            getChoice: function () {
-                return terp.createPrimitive($choice.find(":selected").text());
-            },
+        // Get current choice
+        getChoice: function () {
+            return interpreter.createPrimitive($choice.find(":selected").text());
+        },
 
-            // Set callbacks << FIXME
-            setFieldCallback: function (f) {
-                callbacks.field = f;
-            },
+        // Set callbacks << FIXME
+        setFieldCallback: function (f) {
+            callbacks.field = f;
+        },
 
-            setChoiceCallback: function (f) {
-                callbacks.choice = f;
-            },
+        setChoiceCallback: function (f) {
+            callbacks.choice = f;
+        },
 
-            setButtonCallback: function (but, f) {
-                callbacks.buttons[but - 1] = f;
-            },
+        setButtonCallback: function (but, f) {
+            callbacks.buttons[but - 1] = f;
+        },
 
-            // Console
+        // Console
 
-            // print to console
-            print: function () {
-                var slist = [];
-                for (var i = 0, l = arguments.length; i < l; i++) {
-                    slist.push(arguments[i].toString());
-                }
-                $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
-                $text.append('\n');
-            },
+        // print to console
+        print: function () {
+            var slist = [];
+            for (var i = 0, l = arguments.length; i < l; i++) {
+                slist.push(arguments[i].toString());
+            }
+            $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
+            $text.append('\n');
+        },
 
-            // clear text from console
-            clearConsole: function () {
-                $text.empty()
-            },
+        // clear text from console
+        clearConsole: function () {
+            $text.empty()
+        },
 
-            // reset console completely, including colors
-            resetConsole: function () {
-                resetConsole();
-            },
+        // reset console completely, including colors
+        resetConsole: function () {
+            resetConsole();
+        },
 
-            consoleColor: function (color) {
-                if (arguments.length == 3) {
-                    consoleColor = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-                } else {
-                    consoleColor = color.toString();
-                }
-            },
+        consoleColor: function (color) {
+            if (arguments.length == 3) {
+                consoleColor = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+            } else {
+                consoleColor = color.toString();
+            }
+        },
 
-            consoleBackground: function (color) {
-                if (arguments.length == 3) {
-                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-                } else {
-                    color = color.toString();
-                }
-                $text.css("background-color", color);
-            },
+        consoleBackground: function (color) {
+            if (arguments.length == 3) {
+                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+            } else {
+                color = color.toString();
+            }
+            $text.css("background-color", color);
+        },
 
-            // Canvas
+        // Canvas
 
-            fillMode: function (mode) {
-                fillMode = mode.toBoolean();
-            },
+        fillMode: function (mode) {
+            fillMode = mode.toBoolean();
+        },
 
-            strokeMode: function (mode) {
-                strokeMode = mode.toBoolean();
-            },
+        strokeMode: function (mode) {
+            strokeMode = mode.toBoolean();
+        },
 
-            fillColor: function (color) {
-                if (arguments.length == 3) {
-                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-                } else {
-                    color = color.toString();
-                }
-                context.fillStyle = color;
-            },
+        fillColor: function (color) {
+            if (arguments.length == 3) {
+                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+            } else {
+                color = color.toString();
+            }
+            context.fillStyle = color;
+        },
 
-            strokeColor: function (color) {
-                if (arguments.length == 3) {
-                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-                } else {
-                    color = color.toString();
-                }
-                context.strokeStyle = color;
-            },
+        strokeColor: function (color) {
+            if (arguments.length == 3) {
+                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+            } else {
+                color = color.toString();
+            }
+            context.strokeStyle = color;
+        },
 
-            lineWidth: function (w) {
-                context.lineWidth = w.toNumber();
-            },
+        lineWidth: function (w) {
+            context.lineWidth = w.toNumber();
+        },
 
-            background: function (color) {
-                var oldFillStyle = context.fillStyle;
-                if (arguments.length == 3) {
-                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-                } else {
-                    color = color.toString();
-                }
-                context.fillStyle = color;
-                context.fillRect(0, 0, canvasW, canvasH);
-                context.fillStyle = oldFillStyle;
-            },
+        background: function (color) {
+            var oldFillStyle = context.fillStyle;
+            if (arguments.length == 3) {
+                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+            } else {
+                color = color.toString();
+            }
+            context.fillStyle = color;
+            context.fillRect(0, 0, canvasW, canvasH);
+            context.fillStyle = oldFillStyle;
+        },
 
-            rectangle: function (x, y, w, h) {
-                x = x.toNumber();
-                y = y.toNumber();
-                w = w.toNumber();
-                h = h.toNumber();
-                if (fillMode) {
-                    context.fillRect(x, y, w, h);
-                }
-                if (strokeMode) {
-                    context.strokeRect(x, y, w, h);
-                }
-            },
+        rectangle: function (x, y, w, h) {
+            x = x.toNumber();
+            y = y.toNumber();
+            w = w.toNumber();
+            h = h.toNumber();
+            if (fillMode) {
+                context.fillRect(x, y, w, h);
+            }
+            if (strokeMode) {
+                context.strokeRect(x, y, w, h);
+            }
+        },
 
-            triangle: function (x1, y1, x2, y2, x3, y3) {
-                x1 = x1.toNumber();
-                y1 = y1.toNumber();
-                x2 = x2.toNumber();
-                y2 = y2.toNumber();
-                x3 = x3.toNumber();
-                y3 = y3.toNumber();
-                context.beginPath();
-                context.moveTo(x1, y1);
-                context.lineTo(x2, y2);
-                context.lineTo(x3, y3);
-                context.closePath();
-                if (fillMode) {
-                    context.fill();
-                }
-                if (strokeMode) {
-                    context.stroke();
-                }
-            },
-
-            ellipse: function (x, y, hr, vr) {
-                x = x.toNumber();
-                y = y.toNumber();
-                hr = hr.toNumber();
-                vr = vr.toNumber();
-                context.save();
-                context.translate(x, y);
-                context.scale(1, vr / hr);
-                context.beginPath();
-                context.arc(0, 0, hr, 0, 2 * Math.PI, false);
-                context.restore();
-                if (fillMode) {
-                    context.fill();
-                }
-                if (strokeMode) {
-                    context.stroke();
-                }
-            },
-
-            circle: function (x, y, r) {
-                api.ellipse(x, y, r, r);
-            },
-
-            line: function (x1, y1, x2, y2) {
-                x1 = x1.toNumber();
-                y1 = y1.toNumber();
-                x2 = x2.toNumber();
-                y2 = y2.toNumber();
-                context.beginPath();
-                context.moveTo(x1, y1);
-                context.lineTo(x2, y2);
+        triangle: function (x1, y1, x2, y2, x3, y3) {
+            x1 = x1.toNumber();
+            y1 = y1.toNumber();
+            x2 = x2.toNumber();
+            y2 = y2.toNumber();
+            x3 = x3.toNumber();
+            y3 = y3.toNumber();
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            context.lineTo(x3, y3);
+            context.closePath();
+            if (fillMode) {
+                context.fill();
+            }
+            if (strokeMode) {
                 context.stroke();
             }
-        }
+        },
 
-        return api;
-    }
+        ellipse: function (x, y, hr, vr) {
+            x = x.toNumber();
+            y = y.toNumber();
+            hr = hr.toNumber();
+            vr = vr.toNumber();
+            context.save();
+            context.translate(x, y);
+            context.scale(1, vr / hr);
+            context.beginPath();
+            context.arc(0, 0, hr, 0, 2 * Math.PI, false);
+            context.restore();
+            if (fillMode) {
+                context.fill();
+            }
+            if (strokeMode) {
+                context.stroke();
+            }
+        },
+
+        circle: function (x, y, r) {
+            api.ellipse(x, y, r, r);
+        },
+
+        line: function (x1, y1, x2, y2) {
+            x1 = x1.toNumber();
+            y1 = y1.toNumber();
+            x2 = x2.toNumber();
+            y2 = y2.toNumber();
+            context.beginPath();
+            context.moveTo(x1, y1);
+            context.lineTo(x2, y2);
+            context.stroke();
+        }
+    };
 
     // On document ready
     $(function() {
