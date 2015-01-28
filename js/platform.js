@@ -102,7 +102,8 @@
     
     // Initiate AJAX call to download code
     function loadCode () {
-        $.ajax({url: codeUrl, dataType: "text", success: resetPlatform, 
+        var url = codeUrl + '?' + Math.floor(Math.random()*18446744073709551557).toString(36);
+        $.ajax({url: url, dataType: "text", success: resetPlatform,
             error: function () {
                 setError("network", "Could not load " + codeUrl);
                 }});
