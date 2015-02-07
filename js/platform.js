@@ -2,11 +2,15 @@
 
 (function ($) {
     var context, codeUrl, codeList, callbacks;
-    var  $text, api, $message, $st, $source, $field, $buttons, $choice, $submit;
+    var  $text, api, $message, $st, $source, $field, $buttons, $choice, $submit, $shade, $dialog;
     var fillMode = true, strokeMode = true, consoleColor;
     var canvasW = 400, canvasH = 400;
     var interpreter;
     var interpreterRunning = false;
+    var interpreterPaused = false;
+    var futureStep = null;
+    var dialogResult = null;
+    var dialogMode = 'alert';
     
     // Utility functions
     function componentToHex(c) {
@@ -69,7 +73,40 @@
             $st.html(trace);
         }
     }
-    
+
+    // Show dialog box
+    function showDialog (mode, message, deftext) {
+        $dialog.find('.dialog-message').html(message);
+        switch (mode) {
+            case 'alert':
+                $dialog.find('.cancel').hide();
+                $dialog.find('.dialog-input').hide();
+                break;
+            case 'confirm':
+                $dialog.find('.cancel').show();
+                $dialog.find('.dialog-input').hide();
+                break;
+            case 'prompt':
+                $dialog.find('.cancel').show();
+                $dialog.find('.dialog-input').show();
+                if (deftext) {
+                    $dialog.find('.prompt').val(deftext);
+                }
+                break;
+            default:
+                return;
+        }
+        dialogMode = mode;
+        $shade.css('z-index', 200).fadeIn();
+        $dialog.fadeIn();
+    }
+
+    // Hide dialog box
+    function hideDialog () {
+        $dialog.fadeOut();
+        $shade.fadeOut();
+    }
+
     // Display error in header bar
     function setError (severity, error) {
         if (!arguments.length) {
@@ -99,7 +136,7 @@
             }
         }
     }
-    
+
     // Initiate AJAX call to download code
     function loadCode () {
         var url = codeUrl + '?' + Math.floor(Math.random()*18446744073709551557).toString(36);
@@ -111,8 +148,9 @@
     
     // Accept dynamically loaded code and reset UI
     function resetPlatform (code) {
-        var codeFunc, e;
-        
+        var e;
+        var realCode = modalCode + code;
+
         // Default visibility
         $("#console").show();
         $("#canvas").show();
@@ -127,7 +165,7 @@
         resetInput();
         
         try {
-            interpreter = new Interpreter(code, interpreterInit);
+            interpreter = new Interpreter(realCode, interpreterInit);
             interpreterRunning = true;
             setError("info", "Running");
             setImmediate(doStep);
@@ -157,22 +195,65 @@
         return files;
     }
 
+    // Code for communicating across the sandbox
+    var modalCode = "BMS.prompt = function (message, deftext) {\n" +
+        "_showDialog('prompt', message, deftext);\n" +
+        "_pause();\n" +
+        "return _getDialogResult();\n" +
+        "}\n" +
+        "BMS.confirm = function (message) {\n" +
+        "_showDialog('confirm', message);\n" +
+        "_pause();\n" +
+        "return _getDialogResult();\n" +
+        "}\n" +
+        "BMS.alert = function (message) {\n" +
+        "_showDialog('alert', message);\n" +
+        "_pause();\n" +
+        "}\n";
+
     // Initialize JS Interpreter + create API
     function interpreterInit (terp, scope) {
         var BMS = terp.createObject(null);
         terp.setProperty(scope, 'BMS', BMS, true);
 
+        // Public api
         for (var name in api) {
             terp.setProperty(BMS, name, terp.createNativeFunction(api[name]), true);
         }
+
+        // Private functions
+        var wrapper = function () {
+            interpreterPaused = true;
+        }
+        terp.setProperty(scope, '_pause', terp.createNativeFunction(wrapper));
+        wrapper = function (mode, message, deftext) {
+            mode = mode.toString();
+            message = message.toString();
+            deftext = deftext && (deftext.type === 'undefined' ? '' : deftext.toString());
+            showDialog(mode, message, deftext);
+        }
+        terp.setProperty(scope, '_showDialog', terp.createNativeFunction(wrapper));
+        wrapper = function () {
+            return terp.createPrimitive(dialogResult);
+        }
+        terp.setProperty(scope, '_getDialogResult', terp.createNativeFunction(wrapper));
     }
+
+    function scheduleStep () {
+        if (!futureStep) {
+            futureStep = setImmediate(doStep);
+        }
+    }
+
     function doStep () {
         // TODO: Runaway loop detection
+        futureStep = null;
         if (interpreterRunning) {
-            if (interpreter.step()) {
-                setImmediate(doStep);
-            } else {
+            interpreterPaused = false;
+            if (!interpreter.step()) {
                 setError('info', 'Done');
+            } else if (!interpreterPaused) {
+                scheduleStep();
             }
         } else {
             setError('error', 'Stopped');
@@ -182,222 +263,221 @@
     // External API for console/canvas/input panel. Wrapped to close interpreter reference
         api = {
 
-        //  General
+            //  General
 
-        // Show/hide UI elements
-        toggleFeatures: function (features, state) {
-            state = state.toBoolean();
-            for (var i = 0, l = features.length.toNumber(); i < l; i++) {
-                var f = interpreter.getProperty(features, terp.createPrimitive(i)).toString();
-                switch (f) {
-                    case 'console':
-                        $('#console').toggle(state);
-                        break;
-                    case 'canvas':
-                        $('#canvas').toggle(state);
-                        break;
-                    case 'input':
-                        $('#input').toggle(state);
-                        break;
+            // Show/hide UI elements
+            toggleFeatures: function (features, state) {
+                state = state.toBoolean();
+                for (var i = 0, l = features.length.toNumber(); i < l; i++) {
+                    var f = interpreter.getProperty(features, terp.createPrimitive(i)).toString();
+                    switch (f) {
+                        case 'console':
+                            $('#console').toggle(state);
+                            break;
+                        case 'canvas':
+                            $('#canvas').toggle(state);
+                            break;
+                        case 'input':
+                            $('#input').toggle(state);
+                            break;
+                    }
                 }
-            }
-        },
+            },
 
-        // Input
+            // Input
 
-        // Change button labels
-        setButtonLabel: function (but, label) {
-            but = but.toNumber();
-            label = label.toString();
-            if (but === 0) {      // 0 is the submit button
-                $submit.html(label);
-            } else {
-                $buttons.eq(but - 1).html(label);
-            }
-        },
+            // Change button labels
+            setButtonLabel: function (but, label) {
+                but = but.toNumber();
+                label = label.toString();
+                if (but === 0) {      // 0 is the submit button
+                    $submit.html(label);
+                } else {
+                    $buttons.eq(but - 1).html(label);
+                }
+            },
 
-        // Change options for select menu
-        setChoices: function (choices) {
-            $choice.empty();
-            for (var i = 0, l = choices.length.toNumber(); i < l; i++) {
-                var c = interpreter.getProperty(choices, interpreter.createPrimitive(i)).toString();
-                $choice.append("<option>" + c + "</option>");
-            }
-        },
+            // Change options for select menu
+            setChoices: function (choices) {
+                $choice.empty();
+                for (var i = 0, l = choices.length.toNumber(); i < l; i++) {
+                    var c = interpreter.getProperty(choices, interpreter.createPrimitive(i)).toString();
+                    $choice.append("<option>" + c + "</option>");
+                }
+            },
 
-        // Get current choice
-        getChoice: function () {
-            return interpreter.createPrimitive($choice.find(":selected").text());
-        },
+            // Get current choice
+            getChoice: function () {
+                return interpreter.createPrimitive($choice.find(":selected").text());
+            },
 
-        // Set callbacks << FIXME
-        setFieldCallback: function (f) {
-            callbacks.field = f;
-        },
+            // Set callbacks << FIXME
+            setFieldCallback: function (f) {
+                callbacks.field = f;
+            },
 
-        setChoiceCallback: function (f) {
-            callbacks.choice = f;
-        },
+            setChoiceCallback: function (f) {
+                callbacks.choice = f;
+            },
 
-        setButtonCallback: function (but, f) {
-            callbacks.buttons[but - 1] = f;
-        },
+            setButtonCallback: function (but, f) {
+                callbacks.buttons[but - 1] = f;
+            },
 
-        // Console
+            // Console
 
-        // print to console
-        print: function () {
-            var slist = [];
-            for (var i = 0, l = arguments.length; i < l; i++) {
-                slist.push(arguments[i].toString());
-            }
-            $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
-            $text.append('\n');
-        },
+            // print to console
+            print: function () {
+                var slist = [];
+                for (var i = 0, l = arguments.length; i < l; i++) {
+                    slist.push(arguments[i].toString());
+                }
+                $text.append($('<span>' + slist.join(' ') + '</span>').css('color', consoleColor));
+                $text.append('\n');
+            },
 
-        // clear text from console
-        clearConsole: function () {
-            $text.empty()
-        },
+            // clear text from console
+            clearConsole: function () {
+                $text.empty()
+            },
 
-        // reset console completely, including colors
-        resetConsole: function () {
-            resetConsole();
-        },
+            // reset console completely, including colors
+            resetConsole: function () {
+                resetConsole();
+            },
 
-        consoleColor: function (color) {
-            if (arguments.length == 3) {
-                consoleColor = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-            } else {
-                consoleColor = color.toString();
-            }
-        },
+            consoleColor: function (color) {
+                if (arguments.length == 3) {
+                    consoleColor = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    consoleColor = color.toString();
+                }
+            },
 
-        consoleBackground: function (color) {
-            if (arguments.length == 3) {
-                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-            } else {
-                color = color.toString();
-            }
-            $text.css("background-color", color);
-        },
+            consoleBackground: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                $text.css("background-color", color);
+            },
 
-        // Canvas
+            // Canvas
 
-        fillMode: function (mode) {
-            fillMode = mode.toBoolean();
-        },
+            fillMode: function (mode) {
+                fillMode = mode.toBoolean();
+            },
 
-        strokeMode: function (mode) {
-            strokeMode = mode.toBoolean();
-        },
+            strokeMode: function (mode) {
+                strokeMode = mode.toBoolean();
+            },
 
-        fillColor: function (color) {
-            if (arguments.length == 3) {
-                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-            } else {
-                color = color.toString();
-            }
-            context.fillStyle = color;
-        },
+            fillColor: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.fillStyle = color;
+            },
 
-        strokeColor: function (color) {
-            if (arguments.length == 3) {
-                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-            } else {
-                color = color.toString();
-            }
-            context.strokeStyle = color;
-        },
+            strokeColor: function (color) {
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.strokeStyle = color;
+            },
 
-        lineWidth: function (w) {
-            context.lineWidth = w.toNumber();
-        },
+            lineWidth: function (w) {
+                context.lineWidth = w.toNumber();
+            },
 
-        background: function (color) {
-            var oldFillStyle = context.fillStyle;
-            if (arguments.length == 3) {
-                color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
-            } else {
-                color = color.toString();
-            }
-            context.fillStyle = color;
-            context.fillRect(0, 0, canvasW, canvasH);
-            context.fillStyle = oldFillStyle;
-        },
+            background: function (color) {
+                var oldFillStyle = context.fillStyle;
+                if (arguments.length == 3) {
+                    color = rgbToHex(arguments[0].toNumber(), arguments[1].toNumber(), arguments[2].toNumber());
+                } else {
+                    color = color.toString();
+                }
+                context.fillStyle = color;
+                context.fillRect(0, 0, canvasW, canvasH);
+                context.fillStyle = oldFillStyle;
+            },
 
-        rectangle: function (x, y, w, h) {
-            x = x.toNumber();
-            y = y.toNumber();
-            w = w.toNumber();
-            h = h.toNumber();
-            if (fillMode) {
-                context.fillRect(x, y, w, h);
-            }
-            if (strokeMode) {
-                context.strokeRect(x, y, w, h);
-            }
-        },
+            rectangle: function (x, y, w, h) {
+                x = x.toNumber();
+                y = y.toNumber();
+                w = w.toNumber();
+                h = h.toNumber();
+                if (fillMode) {
+                    context.fillRect(x, y, w, h);
+                }
+                if (strokeMode) {
+                    context.strokeRect(x, y, w, h);
+                }
+            },
 
-        triangle: function (x1, y1, x2, y2, x3, y3) {
-            x1 = x1.toNumber();
-            y1 = y1.toNumber();
-            x2 = x2.toNumber();
-            y2 = y2.toNumber();
-            x3 = x3.toNumber();
-            y3 = y3.toNumber();
-            context.beginPath();
-            context.moveTo(x1, y1);
-            context.lineTo(x2, y2);
-            context.lineTo(x3, y3);
-            context.closePath();
-            if (fillMode) {
-                context.fill();
-            }
-            if (strokeMode) {
+            triangle: function (x1, y1, x2, y2, x3, y3) {
+                x1 = x1.toNumber();
+                y1 = y1.toNumber();
+                x2 = x2.toNumber();
+                y2 = y2.toNumber();
+                x3 = x3.toNumber();
+                y3 = y3.toNumber();
+                context.beginPath();
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
+                context.lineTo(x3, y3);
+                context.closePath();
+                if (fillMode) {
+                    context.fill();
+                }
+                if (strokeMode) {
+                    context.stroke();
+                }
+            },
+
+            ellipse: function (x, y, hr, vr) {
+                x = x.toNumber();
+                y = y.toNumber();
+                hr = hr.toNumber();
+                vr = vr.toNumber();
+                context.save();
+                context.translate(x, y);
+                context.scale(1, vr / hr);
+                context.beginPath();
+                context.arc(0, 0, hr, 0, 2 * Math.PI, false);
+                context.restore();
+                if (fillMode) {
+                    context.fill();
+                }
+                if (strokeMode) {
+                    context.stroke();
+                }
+            },
+
+            circle: function (x, y, r) {
+                api.ellipse(x, y, r, r);
+            },
+
+            line: function (x1, y1, x2, y2) {
+                x1 = x1.toNumber();
+                y1 = y1.toNumber();
+                x2 = x2.toNumber();
+                y2 = y2.toNumber();
+                context.beginPath();
+                context.moveTo(x1, y1);
+                context.lineTo(x2, y2);
                 context.stroke();
             }
-        },
-
-        ellipse: function (x, y, hr, vr) {
-            x = x.toNumber();
-            y = y.toNumber();
-            hr = hr.toNumber();
-            vr = vr.toNumber();
-            context.save();
-            context.translate(x, y);
-            context.scale(1, vr / hr);
-            context.beginPath();
-            context.arc(0, 0, hr, 0, 2 * Math.PI, false);
-            context.restore();
-            if (fillMode) {
-                context.fill();
-            }
-            if (strokeMode) {
-                context.stroke();
-            }
-        },
-
-        circle: function (x, y, r) {
-            api.ellipse(x, y, r, r);
-        },
-
-        line: function (x1, y1, x2, y2) {
-            x1 = x1.toNumber();
-            y1 = y1.toNumber();
-            x2 = x2.toNumber();
-            y2 = y2.toNumber();
-            context.beginPath();
-            context.moveTo(x1, y1);
-            context.lineTo(x2, y2);
-            context.stroke();
-        }
     };
 
     // On document ready
     $(function() {
-        var $select = $("#codeselect"), $showcode = $("#showcode"),
-            $shade = $("#shade");
+        var $select = $("#codeselect"), $showcode = $("#showcode");
         var m, sourceVisible = false, stVisible = false;
         
         // Cache some (mostly jquery) variables
@@ -410,6 +490,8 @@
         $buttons = $(".cbtn");
         $choice = $("#choice");
         context = $("#graphics")[0].getContext("2d");
+        $shade = $("#shade");
+        $dialog = $("#dialog");
         
         // Bind mouseover to show/hide stack trace when appropriate
         $message.click(function () {
@@ -431,6 +513,7 @@
                sourceVisible = false;
            } else {
                $showcode.html("Hide Code");
+               $shade.css('z-index', 100);
                $shade.fadeIn();
                $source.fadeIn();
                sourceVisible = true;
@@ -439,6 +522,29 @@
         
         // Bind "Reload Code" button
         $("#reloadcode").click(loadCode);
+
+        // Bind dialog buttons
+        $dialog.find('.ok').click(function () {
+            if (dialogMode === 'confirm') {
+                dialogResult = true;
+            } else if (dialogMode === 'prompt') {
+                dialogResult = $dialog.find('.prompt').val();
+            } else {
+                dialogResult = null;
+            }
+            hideDialog();
+            scheduleStep();
+        });
+
+        $dialog.find('.cancel').click(function () {
+            if (dialogMode === 'confirm') {
+                dialogResult = false;
+            } else {
+                dialogResult = null;
+            }
+            hideDialog();
+            scheduleStep();
+        });
         
         // Bind input elements
         
