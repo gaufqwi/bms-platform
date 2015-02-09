@@ -160,7 +160,7 @@ select:focus, button:focus {
     text-align: left;
 }
 
-#dialog {
+.dialog {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -171,6 +171,15 @@ select:focus, button:focus {
     border-radius: 8px;
     background: white;
     display: none;
+    padding: 8px;
+}
+
+.dialog input {
+    width: 100%;
+}
+
+.dialog div {
+    margin: 4px 0;
 }
 
 .bmscs-sys-btn {
