@@ -91,6 +91,8 @@
                 $dialog.find('.dialog-input').show();
                 if (deftext) {
                     $dialog.find('.prompt').val(deftext);
+                } else {
+                    $dialog.find('.prompt').val();
                 }
                 break;
             default:
