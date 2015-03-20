@@ -92,21 +92,21 @@
                 if (deftext) {
                     $dialog.find('.prompt').val(deftext);
                 } else {
-                    $dialog.find('.prompt').val();
+                    $dialog.find('.prompt').val('');
                 }
                 break;
             default:
                 return;
         }
         dialogMode = mode;
-        $shade.css('z-index', 200).fadeIn();
-        $dialog.fadeIn();
+        $shade.css('z-index', 200).fadeIn(0);
+        $dialog.fadeIn(20);
     }
 
     // Hide dialog box
     function hideDialog () {
-        $dialog.fadeOut();
-        $shade.fadeOut();
+        $dialog.fadeOut(20);
+        $shade.fadeOut(0);
     }
 
     // Display error in header bar
