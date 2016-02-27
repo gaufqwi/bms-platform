@@ -1,0 +1,19 @@
+{
+  "name": "bms-platform",
+  "version": "1.0.0",
+  "description": "Platform for learning to code in Javascript",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gaufqwi/bms-platform.git"
+  },
+  "author": "Jay Bloodworth",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gaufqwi/bms-platform/issues"
+  },
+  "homepage": "https://github.com/gaufqwi/bms-platform"
+}

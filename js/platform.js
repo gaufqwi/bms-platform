@@ -574,18 +574,42 @@
         });
         
         // Read code dir and set up drop down
-        $.ajax({url: "code/index.php", dataType: "json", success: function (data) {
-            codeList = data;
-            codeList.forEach(function (spec) {
-                $select.append($("<option>").html(spec).val('code/' + spec));
-            });
-            //codeUrl = "code.js";
-            codeUrl = 'code/' + codeList[0];
-            loadCode();
-        }});
+        // $.ajax({url: "code/index.php", dataType: "json", success: function (data) {
+        //     codeList = data;
+        //     codeList.forEach(function (spec) {
+        //         $select.append($("<option>").html(spec).val('code/' + spec));
+        //     });
+        //     //codeUrl = "code.js";
+        //     codeUrl = 'code/' + codeList[0];
+        //     loadCode();
+        // }});
         $select.change(function () {
             codeUrl = $select.val();
             loadCode();
+        });
+        
+        // Set up socket.io
+        var socket = io();
+        socket.on('code files', function (filenames) {
+            $select.empty();
+            var needReload = true;
+            for (var i = 0; i < filenames.length; i++) {
+                var fn = filenames[i];
+                if (('code/' + fn) === codeUrl) {
+                    needReload = false;
+                }
+                $select.append($("<option>").html(fn).val('code/' + fn));
+            }
+            if (needReload) {
+                codeUrl = 'code/' + filenames[0];
+                loadCode();
+            } else {
+                $select.val(codeUrl);
+            }
+        });
+        socket.on('connect', function () {
+            console.log('connect');
+            socket.emit('get code list');
         });
     });
 
