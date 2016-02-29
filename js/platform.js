@@ -315,6 +315,7 @@
 
             // Set callbacks << FIXME
             setFieldCallback: function (f) {
+                console.log(f);
                 callbacks.field = f;
             },
 
